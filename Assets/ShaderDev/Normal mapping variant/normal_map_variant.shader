@@ -59,7 +59,7 @@ Shader "ShaderDev/12NormalMapVariant"
 			vertexOutput o;
 			o.pos = UnityObjectToClipPos(v.vertex);
 			o.texCoord.xy = v.texCoord.xy * _MainTexture_ST.xy + _MainTexture_ST.zw;
-			o.normalWorld = normalize(mul(v.normal, unity_WorldToObject)); // notice inverse unity_ObjectToWorld here!!
+			o.normalWorld = v.normal;//normalize(mul(v.normal, unity_WorldToObject)); // notice inverse unity_ObjectToWorld here!!
 #if ENABLE_NORMAL_MAPPING
 			o.normalTexCoord.xy = v.texCoord.xy * _NormalMap_ST.xy + _NormalMap_ST.zw;
 			o.tangentWorld = normalize(mul(v.tangent, unity_ObjectToWorld));
@@ -103,12 +103,13 @@ Shader "ShaderDev/12NormalMapVariant"
 									     i.binormal);
 			float3 normalAtPixelWorld = normalize(mul(tbnWorld, normalAtPixel));
 
-			return (normalAtPixelWorld, 1);
+			//return fixed4(0, 0, 0, 1);
+			return fixed4(normalAtPixelWorld, 1);
 #else
-			//float4 texColor = tex2D(_MainTexture, i.texCoord);
-			//float4 color = _Color * texColor;
+			float4 texColor = tex2D(_MainTexture, i.texCoord);
+			float4 color = _Color * texColor;
 			//return color;
-			return (i.normalWorld, 1);
+			return fixed4(i.normalWorld, 1);
 #endif
 		}
 

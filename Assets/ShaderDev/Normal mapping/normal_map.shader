@@ -90,7 +90,7 @@ Shader "ShaderDev/11NormalMap"
 			float3x3 tbnWorld = float3x3(i.tangentWorld,
 									     i.normalWorld,
 									     i.binormal);
-			float3 normalAtPixelWorld = normalize(mul(tbnWorld, normalAtPixel));
+			float4 normalAtPixelWorld = normalize((mul(tbnWorld, normalAtPixel), 1));
 
 
 			float4 texColor = tex2D(_MainTexture, i.texCoord);
