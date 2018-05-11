@@ -46,11 +46,11 @@ Shader "ShaderDev/12NormalMapVariant"
 		{
 			float4 pos : SV_POSITION;
 			float4 texCoord: TEXCOORD0;
-			float3 normalWorld: TEXCOORD1;
+			float4 normalWorld: TEXCOORD1;
 #if ENABLE_NORMAL_MAPPING
 			float4 normalTexCoord: TEXCOORD4;
-			float3 tangentWorld: TEXCOORD2;
-			float3 binormal: TEXCOORD3;
+			float4 tangentWorld: TEXCOORD2;
+			float3 binormalWorld: TEXCOORD3;
 #endif
 		};
 
@@ -59,11 +59,12 @@ Shader "ShaderDev/12NormalMapVariant"
 			vertexOutput o;
 			o.pos = UnityObjectToClipPos(v.vertex);
 			o.texCoord.xy = v.texCoord.xy * _MainTexture_ST.xy + _MainTexture_ST.zw;
-			o.normalWorld = v.normal;//normalize(mul(v.normal, unity_WorldToObject)); // notice inverse unity_ObjectToWorld here!!
+			// Somehow normalizing this breaks non-normal-map appearance
+			o.normalWorld = mul(v.normal, unity_WorldToObject); // notice inverse unity_ObjectToWorld here!!
 #if ENABLE_NORMAL_MAPPING
 			o.normalTexCoord.xy = v.texCoord.xy * _NormalMap_ST.xy + _NormalMap_ST.zw;
 			o.tangentWorld = normalize(mul(v.tangent, unity_ObjectToWorld));
-			o.binormal = normalize((cross(o.normalWorld, o.tangentWorld) * v.tangent.w)); // wHy multiply?
+			o.binormalWorld = normalize(cross(o.normalWorld, o.tangentWorld) * v.tangent.w); // wHy multiply?
 #endif
 			return o;
 		}
@@ -72,7 +73,7 @@ Shader "ShaderDev/12NormalMapVariant"
 		float3 normalFromColor(float4 color)
 		{
 		#if defined(UNITY_NO_DXT5nm)
-			return color.rgb * 2 - 1;
+			return color.xyz * 2 - 1;
 		#else
 			//R => A
 			//G => y
@@ -81,8 +82,7 @@ Shader "ShaderDev/12NormalMapVariant"
 			float3 normalVal = float3(color.a * 2.0 - 1.0,
 									color.g * 2.0 - 1.0,
 									0.0);
-			float z = sqrt(1 - dot(normalVal.xy, normalVal.xy));
-			normalVal.z = z;
+			normalVal.z = sqrt(1 - dot(normalVal, normalVal));
 			return normalVal;
 		#endif
 		}
@@ -92,24 +92,22 @@ Shader "ShaderDev/12NormalMapVariant"
 		{
 #if ENABLE_NORMAL_MAPPING
 			// Color of pixel read from tangent space normal map
-			fixed4 normalColAtPixel = tex2D(_NormalMap, i.normalTexCoord);
+			float4 normalColAtPixel = tex2D(_NormalMap, i.normalTexCoord);
 
-			// Normal value in tangent space converted from color value
+			//Normal value in tangent space converted from color value
 			float3 normalAtPixel = normalFromColor(normalColAtPixel);
-
+			
 			//Compose TBN matrix
-			float3x3 tbnWorld = float3x3(i.tangentWorld,
-									     i.normalWorld,
-									     i.binormal);
-			float3 normalAtPixelWorld = normalize(mul(tbnWorld, normalAtPixel));
-
-			//return fixed4(0, 0, 0, 1);
+			float3x3 tbnWorld = float3x3(i.tangentWorld.xyz,
+									     i.binormalWorld.xyz,
+									     i.normalWorld.xyz);
+			float3 normalAtPixelWorld = normalize(mul(normalAtPixel, tbnWorld));
 			return fixed4(normalAtPixelWorld, 1);
 #else
 			float4 texColor = tex2D(_MainTexture, i.texCoord);
 			float4 color = _Color * texColor;
 			//return color;
-			return fixed4(i.normalWorld, 1);
+			return fixed4(i.normalWorld.xyz, 1);
 #endif
 		}
 
